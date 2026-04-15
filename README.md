@@ -64,9 +64,9 @@ All scripts follow the same patterns:
 
 ## WQL Notes for OS Collections
 
-- `OperatingSystemNameandVersion LIKE '%Workstation 10.0%'` matches **both** Windows 10 and Windows 11 (both report NT 10.0). Combine with `Build LIKE '10.0.<build>%'` to differentiate feature updates.
-- `OperatingSystemNameandVersion LIKE '%Server 10.0%'` matches Server 2016 / 2019 / 2022 / 2025 — also requires `Build` to differentiate.
-- Server 2012 / 2012 R2 use NT 6.2 / 6.3 and don't need a Build filter.
+- Windows 10 and Windows 11 both report `OperatingSystemNameandVersion LIKE '%Workstation 10.0%'` (both are NT 10.0), so each OS-version collection also filters on `Build LIKE '10.0.<build>%'` to pin the exact feature update — e.g. Windows 10 22H2 uses `10.0.19045%`, Windows 11 24H2 uses `10.0.26100%`.
+- Server 2016 / 2019 / 2022 / 2025 all share `OperatingSystemNameandVersion LIKE '%Server 10.0%'`, so each server collection likewise includes a `Build` filter to pin the specific release.
+- Server 2012 and 2012 R2 use NT 6.2 and 6.3 respectively, so those collections match on `OperatingSystemNameandVersion` alone with no Build filter needed.
 - Server-role collections (`New-ServerRoleCollections.ps1`) detect roles via `SMS_G_System_SERVICE` joined on service names (NTDS, MSSQL%, W3SVC, etc.) — requires Win32_Service hardware inventory enabled (default).
 
 ## Collection Refresh Strategy
