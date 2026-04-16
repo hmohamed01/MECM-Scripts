@@ -29,8 +29,11 @@ mecm-scripts/
 │   ├── Get-EmptyCollections.ps1         Collections with 0 members
 │   └── Export-CollectionInventory.ps1   Full collection audit to CSV
 │
-├── Operations/                          Bulk client actions
-│   └── Invoke-ClientActionOnCollection.ps1   Trigger client actions across a collection
+├── Operations/                          Client/server operations and health checks
+│   ├── Invoke-ClientActionOnCollection.ps1   Trigger client actions across a collection
+│   ├── Invoke-CMClientHealthCheck.ps1        Read-only client health check (CMTrace log)
+│   ├── Invoke-CMServerHealthCheck.ps1        Read-only site server health check (CMTrace log)
+│   └── Repair-WMISafely.ps1                  Non-destructive WMI repository repair
 │
 └── Common/
     └── Connect-CMSite.ps1               Shared module loader + PSDrive helper
@@ -52,6 +55,16 @@ Run any script from a PowerShell session on a machine with the MECM console. Eac
 .\Operations\Invoke-ClientActionOnCollection.ps1 `
     -CollectionName "Patch Ring - Pilot" `
     -Action MachinePolicy
+
+# Health checks — run locally on the target machine as Administrator
+.\Operations\Invoke-CMClientHealthCheck.ps1
+.\Operations\Invoke-CMClientHealthCheck.ps1 -ManagementPoint "cm01.contoso.com"
+
+.\Operations\Invoke-CMServerHealthCheck.ps1
+.\Operations\Invoke-CMServerHealthCheck.ps1 -SiteCode "PS1" -SiteServer "cm01.contoso.com"
+
+# WMI repair — non-destructive, run on machines with WMI issues
+.\Operations\Repair-WMISafely.ps1
 ```
 
 ## Design Conventions
@@ -85,6 +98,18 @@ All scripts follow the same patterns:
 These classes are enabled by default in **MECM 2107+**. On older sites, enable them under **Administration > Client Settings > Default Client Settings > Hardware Inventory > Set Classes**. Devices must complete a hardware inventory cycle after enabling before they appear in the readiness collections.
 
 **Note:** CPU generation compatibility is not checked — there is no reliable inventory field for this. Validate CPU support separately using Microsoft's [PC Health Check](https://aka.ms/GetPCHealthCheckApp) app or the [published processor list](https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors).
+
+## Operations Scripts
+
+The health check and repair scripts in `Operations/` are designed to run **locally on the target machine** as Administrator. They do not use the CM PSDrive or `Connect-CMSite` — they query WMI/CIM directly.
+
+All three produce **CMTrace-compatible logs** that can be opened with [CMTrace](https://learn.microsoft.com/en-us/mem/configmgr/core/support/cmtrace) for color-coded severity filtering:
+
+| Script | Default Log Path | Purpose |
+|---|---|---|
+| `Invoke-CMClientHealthCheck.ps1` | `C:\Windows\CCM\Logs\ClientHealthCheck.log` | Read-only client validation: services, WMI, policy, inventory, cache, MP connectivity, disk, pending reboot |
+| `Invoke-CMServerHealthCheck.ps1` | `C:\Windows\Logs\CMServerHealthCheck.log` | Read-only site server validation: SMS services, SMS Provider, component status, inbox backlogs, disk, SQL connectivity, event log errors |
+| `Repair-WMISafely.ps1` | `C:\Windows\Logs\WMIRepair.log` | Non-destructive WMI repair using `winmgmt /salvagerepository` (never `/resetrepository`), DLL re-registration, MOF recompilation |
 
 ## Collection Refresh Strategy
 
