@@ -1,6 +1,5 @@
 # mecm-scripts
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
@@ -123,7 +122,3 @@ Match the existing patterns when adding scripts:
 2. Use hashtable-driven definitions for anything repetitive
 3. Check existence before creating; count Created / Skipped / Errors and print a summary
 4. Keep WQL and configuration declarative and visible at the top of the script
-
-## License
-
-MIT — see [LICENSE](LICENSE).
