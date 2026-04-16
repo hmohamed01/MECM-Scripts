@@ -22,7 +22,8 @@ mecm-scripts/
 ├── Collections/                         Collection builders (data-driven hashtables + WQL)
 │   ├── New-OSCollections.ps1            Win 10 / 11 / Server versions
 │   ├── New-ClientHealthCollections.ps1  Stale / inactive / obsolete client triage
-│   └── New-ServerRoleCollections.ps1    DC, SQL, IIS, DNS, DHCP, Hyper-V, Exchange, WSUS
+│   ├── New-ServerRoleCollections.ps1    DC, SQL, IIS, DNS, DHCP, Hyper-V, Exchange, WSUS
+│   └── New-Win11ReadinessCollections.ps1  Win11 upgrade readiness (HW checks)
 │
 ├── Reporting/                           Read-only audit and export
 │   ├── Get-EmptyCollections.ps1         Collections with 0 members
@@ -43,6 +44,7 @@ Run any script from a PowerShell session on a machine with the MECM console. Eac
 .\Collections\New-OSCollections.ps1
 .\Collections\New-ClientHealthCollections.ps1
 .\Collections\New-ServerRoleCollections.ps1
+.\Collections\New-Win11ReadinessCollections.ps1
 
 .\Reporting\Get-EmptyCollections.ps1 -OutputPath C:\Temp\empty.csv -IncludeUserCollections
 .\Reporting\Export-CollectionInventory.ps1
@@ -68,6 +70,21 @@ All scripts follow the same patterns:
 - Server 2016 / 2019 / 2022 / 2025 all share `OperatingSystemNameandVersion LIKE '%Server 10.0%'`, so each server collection likewise includes a `Build` filter to pin the specific release.
 - Server 2012 and 2012 R2 use NT 6.2 and 6.3 respectively, so those collections match on `OperatingSystemNameandVersion` alone with no Build filter needed.
 - Server-role collections (`New-ServerRoleCollections.ps1`) detect roles via `SMS_G_System_SERVICE` joined on service names (NTDS, MSSQL%, W3SVC, etc.) — requires Win32_Service hardware inventory enabled (default).
+
+## Hardware Inventory Prerequisites for Win11 Readiness
+
+`New-Win11ReadinessCollections.ps1` queries hardware inventory classes that must be enabled in **Client Settings > Hardware Inventory** for the collections to return results:
+
+| Inventory Class | WMI Class | Used For |
+|---|---|---|
+| TPM | `Win32_Tpm` | TPM 2.0 detection (`SMS_G_System_TPM.SpecVersion`) |
+| Firmware | `Win32_Firmware` | Secure Boot and UEFI detection (`SMS_G_System_FIRMWARE`) |
+| Physical Memory | `Win32_PhysicalMemoryArray` | RAM capacity (`SMS_G_System_X86_PC_MEMORY`) |
+| Logical Disk | `Win32_LogicalDisk` | System disk size (`SMS_G_System_LOGICAL_DISK`) |
+
+These classes are enabled by default in **MECM 2107+**. On older sites, enable them under **Administration > Client Settings > Default Client Settings > Hardware Inventory > Set Classes**. Devices must complete a hardware inventory cycle after enabling before they appear in the readiness collections.
+
+**Note:** CPU generation compatibility is not checked — there is no reliable inventory field for this. Validate CPU support separately using Microsoft's [PC Health Check](https://aka.ms/GetPCHealthCheckApp) app or the [published processor list](https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors).
 
 ## Collection Refresh Strategy
 
