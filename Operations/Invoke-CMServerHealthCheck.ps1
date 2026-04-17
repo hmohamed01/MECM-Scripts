@@ -5,7 +5,9 @@
 .DESCRIPTION
     Validates MECM site server health across SMS services, SQL connectivity,
     site component status, inbox backlogs, disk space, WSUS, and SMS Provider.
-    Writes a CMTrace-compatible log and returns a summary object.
+    On pre-2503 sites, checks ODBC Driver 18 readiness for the 2503 upgrade
+    (requires version 18.4.1.1+). Writes a CMTrace-compatible log and returns
+    a summary object.
 
 .PARAMETER SiteCode
     Three-character site code (e.g. "PS1"). Auto-detected if omitted.
@@ -250,6 +252,56 @@ try {
     }
 } catch {
     Write-CMTraceLog "Cannot query event log: $_" -Severity Warning
+}
+
+# 9. ODBC Driver 18 readiness check for ConfigMgr 2503 upgrade
+#    2503 (build 5.00.9140+) blocks upgrade without ODBC Driver 18.4.1.1+
+$siteVersion = $results['SiteVersion']
+$checkOdbc = $false
+if ($siteVersion) {
+    try {
+        $versionParts = $siteVersion.Split('.')
+        $siteBuild = [int]$versionParts[2]
+        if ($siteBuild -lt 9140) {
+            $checkOdbc = $true
+            Write-CMTraceLog "Site is on build $siteVersion (pre-2503) — checking ODBC Driver 18 upgrade readiness" -Severity Info
+        } else {
+            Write-CMTraceLog "Site is on build $siteVersion (2503+) — ODBC prerequisite already satisfied for this version" -Severity Info
+        }
+    } catch {
+        Write-CMTraceLog "Cannot parse site version '$siteVersion' — skipping ODBC readiness check" -Severity Warning
+    }
+} else {
+    $checkOdbc = $true
+    Write-CMTraceLog "Site version unknown — checking ODBC Driver 18 as a precaution" -Severity Warning
+}
+
+if ($checkOdbc) {
+    $odbcReg = Get-ItemProperty -Path 'HKLM:\SOFTWARE\ODBC\ODBCINST.INI\ODBC Driver 18 for SQL Server' -ErrorAction SilentlyContinue
+    if (-not $odbcReg) {
+        Write-CMTraceLog "ODBC Driver 18 for SQL Server is NOT installed — required for ConfigMgr 2503 upgrade" -Severity Error
+        $results['ODBCDriver18'] = 'NotInstalled'
+    } else {
+        $driverDll = $odbcReg.Driver
+        if ($driverDll -and (Test-Path $driverDll)) {
+            $driverVersion = (Get-Item $driverDll).VersionInfo.ProductVersion
+            $results['ODBCDriver18'] = $driverVersion
+            try {
+                $installed = [version]$driverVersion
+                $required  = [version]'18.4.1.1'
+                if ($installed -ge $required) {
+                    Write-CMTraceLog "ODBC Driver 18 version $driverVersion meets 2503 requirement (>= 18.4.1.1)" -Severity Info
+                } else {
+                    Write-CMTraceLog "ODBC Driver 18 version $driverVersion is BELOW 2503 requirement (18.4.1.1) — upgrade will be blocked" -Severity Error
+                }
+            } catch {
+                Write-CMTraceLog "ODBC Driver 18 installed but cannot parse version '$driverVersion'" -Severity Warning
+            }
+        } else {
+            Write-CMTraceLog "ODBC Driver 18 registry key found but driver DLL not accessible" -Severity Warning
+            $results['ODBCDriver18'] = 'RegistryOnly'
+        }
+    }
 }
 
 Write-CMTraceLog "===== Configuration Manager Server Health Check complete. Log: $LogPath ====="
