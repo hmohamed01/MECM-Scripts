@@ -32,6 +32,7 @@ mecm-scripts/
 │   ├── Invoke-ClientActionOnCollection.ps1   Trigger client actions across a collection
 │   ├── Invoke-CMClientHealthCheck.ps1        Read-only client health check (CMTrace log)
 │   ├── Invoke-CMServerHealthCheck.ps1        Read-only site server health check (CMTrace log)
+│   ├── Invoke-CMUpdateHealthCheck.ps1        Software update / WUA patching health (CMTrace log)
 │   └── Repair-WMISafely.ps1                  Non-destructive WMI repository repair
 │
 └── Common/
@@ -61,6 +62,9 @@ Run any script from a PowerShell session on a machine with the MECM console. Eac
 
 .\Operations\Invoke-CMServerHealthCheck.ps1
 .\Operations\Invoke-CMServerHealthCheck.ps1 -SiteCode "PS1" -SiteServer "cm01.contoso.com"
+
+# Software update / patching health — run locally on managed clients
+.\Operations\Invoke-CMUpdateHealthCheck.ps1
 
 # WMI repair — non-destructive, run on machines with WMI issues
 .\Operations\Repair-WMISafely.ps1
@@ -102,12 +106,13 @@ These classes are enabled by default in **MECM 2107+**. On older sites, enable t
 
 The health check and repair scripts in `Operations/` are designed to run **locally on the target machine** as Administrator. They do not use the CM PSDrive or `Connect-CMSite` — they query WMI/CIM directly.
 
-All three produce **CMTrace-compatible logs** that can be opened with [CMTrace](https://learn.microsoft.com/en-us/mem/configmgr/core/support/cmtrace) for color-coded severity filtering:
+All four produce **CMTrace-compatible logs** that can be opened with [CMTrace](https://learn.microsoft.com/en-us/mem/configmgr/core/support/cmtrace) for color-coded severity filtering:
 
 | Script | Default Log Path | Purpose |
 |---|---|---|
 | `Invoke-CMClientHealthCheck.ps1` | `C:\Windows\CCM\Logs\ClientHealthCheck.log` | Read-only client validation: services, WMI, policy, inventory, cache, MP connectivity, disk, pending reboot |
-| `Invoke-CMServerHealthCheck.ps1` | `C:\Windows\Logs\CMServerHealthCheck.log` | Read-only site server validation: SMS services, SMS Provider, component status, inbox backlogs, disk, SQL connectivity, event log errors |
+| `Invoke-CMServerHealthCheck.ps1` | `C:\Windows\Logs\CMServerHealthCheck.log` | Read-only site server validation: SMS services, SMS Provider, component status, inbox backlogs, disk, SQL connectivity, event log errors, ODBC 2503 readiness |
+| `Invoke-CMUpdateHealthCheck.ps1` | `C:\Windows\CCM\Logs\UpdateHealthCheck.log` | Software update stack validation: WUA version, WSUS registration, pending/failed updates, scan status, SUP assignment, deployment compliance, cache, reboot |
 | `Repair-WMISafely.ps1` | `C:\Windows\Logs\WMIRepair.log` | Non-destructive WMI repair using `winmgmt /salvagerepository` (never `/resetrepository`), DLL re-registration, MOF recompilation |
 
 ## Collection Refresh Strategy
