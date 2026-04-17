@@ -1,6 +1,6 @@
 # mecm-scripts
 
-[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows)
@@ -20,7 +20,7 @@ PowerShell automation scripts for Microsoft Endpoint Configuration Manager (MECM
 mecm-scripts/
 ├── Collections/                         Collection builders (data-driven hashtables + WQL)
 │   ├── New-OSCollections.ps1            Win 10 / 11 / Server versions
-│   ├── New-ClientHealthCollections.ps1  Stale / inactive / obsolete client triage
+│   ├── New-ClientHealthCollections.ps1  Client health + software update health triage
 │   ├── New-ServerRoleCollections.ps1    DC, SQL, IIS, DNS, DHCP, Hyper-V, Exchange, WSUS
 │   └── New-Win11ReadinessCollections.ps1  Win11 upgrade readiness (HW checks)
 │

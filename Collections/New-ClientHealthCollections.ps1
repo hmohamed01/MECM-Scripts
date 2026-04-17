@@ -7,6 +7,7 @@
     Builds a standard set of device collections that surface unhealthy
     or stale clients for operational review:
 
+    Client Health:
         - No MECM Client Installed
         - Obsolete Records
         - Inactive Clients (per client activity status)
@@ -15,12 +16,26 @@
         - No Policy Request 14 Days
         - All Active Healthy Clients
 
-    Collections are placed under Device Collections\Client Health and
-    refreshed weekly. Existing collections are skipped (idempotent).
+    Software Update Health:
+        - WUA Service Not Running / Disabled
+        - BITS Service Not Running
+        - CcmEval Health Evaluation Failed
+        - Last Software Update Scan 14+ Days Old
+        - Update Enforcement Failures
+        - Pending Reboot (blocking update installs)
+        - Update Compliant (all deployments satisfied)
+
+    Collections are placed under Device Collections\Client Health (and
+    the Software Update Health subfolder) and refreshed weekly. Existing
+    collections are skipped (idempotent).
 
 .NOTES
     Run on a machine with the MECM console installed.
     Requires permissions to create collections.
+
+    Software Update Health collections require Win32_Service enabled in
+    hardware inventory (default). Service-state collections reflect the
+    state at last hardware inventory, not real-time.
 
     Date arithmetic uses DateAdd/GetDate WQL functions supported by the
     ConfigMgr collection query engine.
@@ -37,7 +52,10 @@ try {
     $FolderRoot = "$($SiteCode.ToUpper()):\DeviceCollection"
 
     # ─── Create Console Folder Structure ──────────────────────────────
-    $Folders = @("Client Health")
+    $Folders = @(
+        "Client Health",
+        "Client Health\Software Update Health"
+    )
 
     foreach ($Folder in $Folders) {
         $FullPath = Join-Path $FolderRoot $Folder
@@ -126,6 +144,140 @@ SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SM
 FROM SMS_R_System INNER JOIN SMS_CH_ClientSummary
 ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0 AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+"@
+        },
+
+        # ── Software Update Health ───────────────────────────────────
+        # Service-state queries use SMS_G_System_SERVICE (hardware inventory).
+        # State reflects last HW scan — not real-time.
+
+        @{
+            Name    = "SU Health - WUA Service Not Running"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "Windows Update Agent (wuauserv) not in Running state at last hardware inventory"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_SERVICE ON SMS_G_System_SERVICE.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_SERVICE.Name = 'wuauserv'
+AND SMS_G_System_SERVICE.State != 'Running'
+"@
+        },
+        @{
+            Name    = "SU Health - WUA Service Disabled"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "Windows Update Agent start mode set to Disabled — updates cannot run"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_SERVICE ON SMS_G_System_SERVICE.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_SERVICE.Name = 'wuauserv'
+AND SMS_G_System_SERVICE.StartMode = 'Disabled'
+"@
+        },
+        @{
+            Name    = "SU Health - BITS Service Not Running"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "Background Intelligent Transfer Service not running — blocks content download"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_SERVICE ON SMS_G_System_SERVICE.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_SERVICE.Name = 'BITS'
+AND SMS_G_System_SERVICE.State != 'Running'
+"@
+        },
+        @{
+            Name    = "SU Health - CcmEval Health Check Failed"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "CcmEval reported unhealthy and could not auto-remediate (Result 7 = not fixed)"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_EvalResult ON SMS_CH_EvalResult.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_EvalResult.Result = 7
+"@
+        },
+        @{
+            Name    = "SU Health - CcmEval Remediated"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "CcmEval detected a failure and auto-remediated — monitor for recurring issues"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_EvalResult ON SMS_CH_EvalResult.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_EvalResult.Result = 6
+"@
+        },
+        @{
+            Name    = "SU Health - No Update Scan 14+ Days"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "LastSWUpdateScanTime older than 14 days — scan may be failing or SUP unreachable"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_ClientSummary.LastSWUpdateScanTime < DateAdd(dd,-14,GetDate())
+"@
+        },
+        @{
+            Name    = "SU Health - No Update Scan 30+ Days"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "LastSWUpdateScanTime older than 30 days — client is not scanning for updates"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_ClientSummary.LastSWUpdateScanTime < DateAdd(dd,-30,GetDate())
+"@
+        },
+        @{
+            Name    = "SU Health - Update Enforcement Failed"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "At least one update deployment failed enforcement (state 13) — install error on client"
+            WQL     = @"
+SELECT DISTINCT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_UpdateComplianceStatus ON SMS_UpdateComplianceStatus.MachineID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_UpdateComplianceStatus.LastEnforcementMessageID = 13
+"@
+        },
+        @{
+            Name    = "SU Health - Pending Reboot (Update Related)"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "Update installed successfully but pending reboot (enforcement state 8 or 9) — blocking further installs"
+            WQL     = @"
+SELECT DISTINCT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_UpdateComplianceStatus ON SMS_UpdateComplianceStatus.MachineID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_UpdateComplianceStatus.LastEnforcementMessageID IN (8, 9)
+"@
+        },
+        @{
+            Name    = "SU Health - All Deployments Compliant"
+            Folder  = "Client Health\Software Update Health"
+            Comment = "All targeted update deployments are satisfied — healthy update baseline"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+AND SMS_CH_ClientSummary.LastSWUpdateScanTime > DateAdd(dd,-7,GetDate())
+AND SMS_R_System.ResourceID NOT IN (
+    SELECT SMS_UpdateComplianceStatus.MachineID
+    FROM SMS_UpdateComplianceStatus
+    WHERE SMS_UpdateComplianceStatus.LastEnforcementMessageID IN (8, 9, 13)
+)
 "@
         }
     )
