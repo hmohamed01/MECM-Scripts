@@ -108,23 +108,43 @@ ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0 AND SMS_CH_ClientSummary.ClientActiveStatus = 0
 "@
         },
+        # Heartbeat uses SMS_CombinedDeviceResources.LastDDR, not SMS_R_System.AgentTime.
+        # AgentTime is an array with one timestamp per discovery agent, and WQL matches
+        # an array if ANY element matches — so a stale entry from another agent (e.g.
+        # client registration) would flag clients that are heartbeating normally.
+
         @{
             Name    = "Clients - No Heartbeat 30+ Days"
             Folder  = "Client Health"
-            Comment = "AgentTime (heartbeat discovery) older than 30 days"
-            WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.AgentTime < DateAdd(dd,-30,GetDate()) AND SMS_R_System.Client = 1"
+            Comment = "LastDDR (heartbeat discovery) older than 30 days"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_CombinedDeviceResources.LastDDR < DateAdd(dd,-30,GetDate()) AND SMS_R_System.Client = 1
+"@
         },
         @{
             Name    = "Clients - No Heartbeat 60+ Days"
             Folder  = "Client Health"
-            Comment = "AgentTime (heartbeat discovery) older than 60 days"
-            WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.AgentTime < DateAdd(dd,-60,GetDate()) AND SMS_R_System.Client = 1"
+            Comment = "LastDDR (heartbeat discovery) older than 60 days"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_CombinedDeviceResources.LastDDR < DateAdd(dd,-60,GetDate()) AND SMS_R_System.Client = 1
+"@
         },
         @{
             Name    = "Clients - No Heartbeat 90+ Days"
             Folder  = "Client Health"
-            Comment = "AgentTime (heartbeat discovery) older than 90 days — strong cleanup candidate"
-            WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.AgentTime < DateAdd(dd,-90,GetDate()) AND SMS_R_System.Client = 1"
+            Comment = "LastDDR (heartbeat discovery) older than 90 days — strong cleanup candidate"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_CombinedDeviceResources.LastDDR < DateAdd(dd,-90,GetDate()) AND SMS_R_System.Client = 1
+"@
         },
         @{
             Name    = "Clients - No Hardware Inventory 30+ Days"

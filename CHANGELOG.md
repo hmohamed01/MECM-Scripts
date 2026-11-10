@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-11-09
+
+### Fixed
+- `Collections/New-ClientHealthCollections.ps1` — `Clients - No Heartbeat 30/60/90+ Days` filtered on `SMS_R_System.AgentTime`, an array with one timestamp per discovery agent. WQL matches an array if any element matches, so any stale agent entry (e.g. client registration) flagged clients that were heartbeating normally. Now filters on `SMS_CombinedDeviceResources.LastDDR`. Update the membership rules on sites where these collections already exist
+
 ## [1.4.0] - 2026-11-09
 
 ### Added
