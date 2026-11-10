@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-11-10
+
+### Fixed
+- `Collections/New-Win11ReadinessCollections.ps1` — the RAM checks compared `TotalPhysicalMemory` to exactly 4 GB (4194304 KB). That property reports memory available to Windows, which is less than the installed RAM, so devices with 4 GB installed landed in `Win11 Readiness - RAM Below 4GB` and were left out of `Win11 Readiness - Hardware Ready`. The threshold is now 3.5 GB (3670016 KB). Affects `RAM 4GB or More`, `RAM Below 4GB`, and `Hardware Ready`. Update the membership rules on sites where these collections already exist
+- `README.md` — the Win11 readiness prerequisites table listed the wrong WMI classes for Firmware (`SMS_Firmware`, not `Win32_Firmware`) and Memory (`CCM_LogicalMemoryConfiguration`, not `Win32_PhysicalMemoryArray`). Removed the unverified claim that these classes are enabled by default in 2107+, here and in the script notes
+- `Collections/New-ServerRoleCollections.ps1` — comments said the role queries filter on service state, and the description listed CcmExec for site server detection. The queries do neither; the comments now match them
+
 ## [1.4.2] - 2026-11-09
 
 ### Fixed

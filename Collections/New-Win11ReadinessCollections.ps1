@@ -28,7 +28,6 @@
     Hardware inventory classes SMS_G_System_TPM, SMS_G_System_FIRMWARE,
     SMS_G_System_X86_PC_MEMORY, and SMS_G_System_LOGICAL_DISK must be enabled
     in Client Settings > Hardware Inventory for these queries to return results.
-    They are enabled by default in MECM 2107+.
 
     CPU generation compatibility is not checked via WQL — there is no clean
     inventory field for CPU generation. Validate CPU compatibility separately
@@ -74,7 +73,13 @@ try {
     #   SMS_G_System_LOGICAL_DISK     — Size in MB, DeviceID for drive letter
     #
     # Win11 minimum requirements checked:
-    #   TPM 2.0, Secure Boot, UEFI, 4 GB RAM (4194304 KB), 64 GB disk (65536 MB)
+    #   TPM 2.0, Secure Boot, UEFI, 4 GB RAM (3670016 KB), 64 GB disk (65536 MB)
+    #
+    # TotalPhysicalMemory is the memory available to Windows, not the installed RAM.
+    # Firmware and integrated graphics reserve part of it, so a 4 GB device reports
+    # about 3.8-3.9 GB. The RAM checks therefore use 3.5 GB. Microsoft's
+    # HardwareReadiness.ps1 rounds installed RAM to the nearest GB, so it also
+    # passes anything from 3.5 GB up.
 
     $Collections = @(
 
@@ -187,7 +192,7 @@ FROM SMS_R_System
 INNER JOIN SMS_G_System_X86_PC_MEMORY ON SMS_G_System_X86_PC_MEMORY.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation 10.0%'
 AND SMS_R_System.Build LIKE '10.0.1%'
-AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory >= 4194304
+AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory >= 3670016
 "@
         },
         @{
@@ -200,7 +205,7 @@ FROM SMS_R_System
 INNER JOIN SMS_G_System_X86_PC_MEMORY ON SMS_G_System_X86_PC_MEMORY.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation 10.0%'
 AND SMS_R_System.Build LIKE '10.0.1%'
-AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory < 4194304
+AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory < 3670016
 "@
         },
 
@@ -251,7 +256,7 @@ AND SMS_R_System.Build LIKE '10.0.1%'
 AND SMS_G_System_TPM.SpecVersion LIKE '2.0%'
 AND SMS_G_System_FIRMWARE.SecureBoot = 1
 AND SMS_G_System_FIRMWARE.UEFI = 1
-AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory >= 4194304
+AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory >= 3670016
 AND SMS_G_System_LOGICAL_DISK.DeviceID = 'C:'
 AND SMS_G_System_LOGICAL_DISK.Size >= 65536
 "@

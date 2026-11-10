@@ -1,6 +1,6 @@
 # mecm-scripts
 
-[![Version](https://img.shields.io/badge/version-1.4.2-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.3-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows)
@@ -102,11 +102,13 @@ The WMI collections filter `SMS_CH_EvalResult.HealthCheckDescription LIKE '%WMI%
 | Inventory Class | WMI Class | Used For |
 |---|---|---|
 | TPM | `Win32_Tpm` | TPM 2.0 detection (`SMS_G_System_TPM.SpecVersion`) |
-| Firmware | `Win32_Firmware` | Secure Boot and UEFI detection (`SMS_G_System_FIRMWARE`) |
-| Physical Memory | `Win32_PhysicalMemoryArray` | RAM capacity (`SMS_G_System_X86_PC_MEMORY`) |
+| Firmware | `SMS_Firmware` | Secure Boot and UEFI detection (`SMS_G_System_FIRMWARE`) |
+| Memory | `CCM_LogicalMemoryConfiguration` | RAM capacity (`SMS_G_System_X86_PC_MEMORY`) |
 | Logical Disk | `Win32_LogicalDisk` | System disk size (`SMS_G_System_LOGICAL_DISK`) |
 
-These classes are enabled by default in **MECM 2107+**. On older sites, enable them under **Administration > Client Settings > Default Client Settings > Hardware Inventory > Set Classes**. Devices must complete a hardware inventory cycle after enabling before they appear in the readiness collections.
+Check that each class is enabled under **Administration > Client Settings > Default Client Settings > Hardware Inventory > Set Classes**. Devices must complete a hardware inventory cycle after enabling before they appear in the readiness collections.
+
+The RAM collections use a 3.5 GB threshold, not 4 GB. `TotalPhysicalMemory` reports the memory available to Windows, which is less than the installed RAM, so a 4 GB device reports about 3.8-3.9 GB.
 
 **Note:** CPU generation compatibility is not checked — there is no reliable inventory field for this. Validate CPU support separately using Microsoft's [PC Health Check](https://aka.ms/GetPCHealthCheckApp) app or the [published processor list](https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors).
 

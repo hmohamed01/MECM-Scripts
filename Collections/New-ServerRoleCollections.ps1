@@ -15,7 +15,7 @@
         - Hyper-V Hosts         (vmms)
         - Exchange Servers      (MSExchange*)
         - WSUS / SUP            (WsusService)
-        - MECM / ConfigMgr      (SMS_SITE_COMPONENT_MANAGER / CcmExec on server OS)
+        - MECM / ConfigMgr      (SMS_SITE_COMPONENT_MANAGER)
 
     Each collection joins SMS_R_System to SMS_G_System_SERVICE and filters to
     server operating systems so workstations with similar service names don't
@@ -59,7 +59,7 @@ try {
     # Service-based role detection pattern:
     #   JOIN SMS_G_System_SERVICE on matching service Name
     #   AND filter to Server OS only (OperatingSystemNameandVersion LIKE '%Server%')
-    #   AND Service State = "Running" (or Started for cross-version compat)
+    #   No State filter: a stopped or disabled role service still means the role is installed
     function New-ServiceRoleQuery {
         param(
             [Parameter(Mandatory)] [string]$ServiceNameLike
