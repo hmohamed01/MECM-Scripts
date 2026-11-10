@@ -1,6 +1,6 @@
 # mecm-scripts
 
-[![Version](https://img.shields.io/badge/version-1.4.1-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.2-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows)
@@ -89,7 +89,7 @@ All scripts follow the same patterns:
 
 ## Hardware Health Collections
 
-`New-ClientHealthCollections.ps1` builds a `Client Health\Hardware Health` folder. Most of its collections use default hardware inventory (`LOGICAL_DISK`, `OPERATING_SYSTEM`, `X86_PC_MEMORY`, `WORKSTATION_STATUS`) or client status data (`SMS_CH_EvalResult`, `SMS_CH_ClientSummary`). One collection needs an extra setting:
+`New-ClientHealthCollections.ps1` builds a `Client Health\Hardware Health` folder. Most of its collections use default hardware inventory (`LOGICAL_DISK`, `OPERATING_SYSTEM`, `X86_PC_MEMORY`, `WORKSTATION_STATUS`) or client status data (`SMS_CH_EvalResult`, `SMS_CombinedDeviceResources`). One collection needs an extra setting:
 
 - **Disk SMART Predicted Failure** queries `SMS_G_System_DISK.Status = 'Pred Fail'`. Enable the **Status** property of **Disk Drives (Win32_DiskDrive)** under **Client Settings > Hardware Inventory > Set Classes**. It is not collected by default.
 

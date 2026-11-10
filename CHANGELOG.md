@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-11-09
+
+### Fixed
+- `Collections/New-ClientHealthCollections.ps1` — collections queried `SMS_CH_ClientSummary`, which is not a documented SMS Provider class. On sites where the provider rejected the query, the collection was created with no membership rule and skipped on every re-run. `ClientActiveStatus`, `LastHardwareScan`, and `LastPolicyRequest` now come from the documented `SMS_CombinedDeviceResources` class. Affects `Clients - Inactive (per ClientSummary)`, `Clients - No Hardware Inventory 30+ Days`, `Clients - No Policy Request 14+ Days`, `Clients - All Active Healthy`, `SU Health - All Deployments Compliant`, and the two `HW Health - Active Client` collections
+
+### Removed
+- `Collections/New-ClientHealthCollections.ps1` — `SU Health - No Update Scan 14+ Days` and `30+ Days`, and the 7-day scan condition in `SU Health - All Deployments Compliant`. They used `LastSWUpdateScanTime`, which has no documented WMI equivalent; update-scan time is only exposed in the `v_UpdateScanStatus` SQL view
+
 ## [1.4.1] - 2026-11-09
 
 ### Fixed

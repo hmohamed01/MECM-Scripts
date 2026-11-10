@@ -20,7 +20,6 @@
         - WUA Service Not Running / Disabled
         - BITS Service Not Running
         - CcmEval Health Evaluation Failed
-        - Last Software Update Scan 14+ Days Old
         - Update Enforcement Failures
         - Pending Reboot (blocking update installs)
         - Update Compliant (all deployments satisfied)
@@ -100,12 +99,12 @@ try {
         @{
             Name    = "Clients - Inactive (per ClientSummary)"
             Folder  = "Client Health"
-            Comment = "Clients marked inactive by SMS_CH_ClientSummary.ClientActiveStatus"
+            Comment = "Clients marked inactive by client status (ClientActiveStatus = 0)"
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
-FROM SMS_R_System INNER JOIN SMS_CH_ClientSummary
-ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
-WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0 AND SMS_CH_ClientSummary.ClientActiveStatus = 0
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0 AND SMS_CombinedDeviceResources.ClientActiveStatus = 0
 "@
         },
         # Heartbeat uses SMS_CombinedDeviceResources.LastDDR, not SMS_R_System.AgentTime.
@@ -152,9 +151,9 @@ WHERE SMS_CombinedDeviceResources.LastDDR < DateAdd(dd,-90,GetDate()) AND SMS_R_
             Comment = "LastHardwareScan older than 30 days"
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
-FROM SMS_R_System INNER JOIN SMS_CH_ClientSummary
-ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
-WHERE SMS_CH_ClientSummary.LastHardwareScan < DateAdd(dd,-30,GetDate()) AND SMS_R_System.Client = 1
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_CombinedDeviceResources.LastHardwareScan < DateAdd(dd,-30,GetDate()) AND SMS_R_System.Client = 1
 "@
         },
         @{
@@ -163,9 +162,9 @@ WHERE SMS_CH_ClientSummary.LastHardwareScan < DateAdd(dd,-30,GetDate()) AND SMS_
             Comment = "LastPolicyRequest older than 14 days — likely policy or MP communication issue"
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
-FROM SMS_R_System INNER JOIN SMS_CH_ClientSummary
-ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
-WHERE SMS_CH_ClientSummary.LastPolicyRequest < DateAdd(dd,-14,GetDate()) AND SMS_R_System.Client = 1
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_CombinedDeviceResources.LastPolicyRequest < DateAdd(dd,-14,GetDate()) AND SMS_R_System.Client = 1
 "@
         },
         @{
@@ -174,9 +173,9 @@ WHERE SMS_CH_ClientSummary.LastPolicyRequest < DateAdd(dd,-14,GetDate()) AND SMS
             Comment = "Client=1, not obsolete, ClientActiveStatus=1 — healthy baseline"
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.ResourceType, SMS_R_System.Name, SMS_R_System.SMSUniqueIdentifier, SMS_R_System.ResourceDomainORWorkgroup, SMS_R_System.Client
-FROM SMS_R_System INNER JOIN SMS_CH_ClientSummary
-ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
-WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0 AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+FROM SMS_R_System INNER JOIN SMS_CombinedDeviceResources
+ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0 AND SMS_CombinedDeviceResources.ClientActiveStatus = 1
 "@
         },
 
@@ -248,30 +247,6 @@ AND SMS_CH_EvalResult.Result = 6
 "@
         },
         @{
-            Name    = "SU Health - No Update Scan 14+ Days"
-            Folder  = "Client Health\Software Update Health"
-            Comment = "LastSWUpdateScanTime older than 14 days — scan may be failing or SUP unreachable"
-            WQL     = @"
-SELECT SMS_R_System.ResourceID, SMS_R_System.Name
-FROM SMS_R_System
-INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
-WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
-AND SMS_CH_ClientSummary.LastSWUpdateScanTime < DateAdd(dd,-14,GetDate())
-"@
-        },
-        @{
-            Name    = "SU Health - No Update Scan 30+ Days"
-            Folder  = "Client Health\Software Update Health"
-            Comment = "LastSWUpdateScanTime older than 30 days — client is not scanning for updates"
-            WQL     = @"
-SELECT SMS_R_System.ResourceID, SMS_R_System.Name
-FROM SMS_R_System
-INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
-WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
-AND SMS_CH_ClientSummary.LastSWUpdateScanTime < DateAdd(dd,-30,GetDate())
-"@
-        },
-        @{
             Name    = "SU Health - Update Enforcement Failed"
             Folder  = "Client Health\Software Update Health"
             Comment = "At least one update deployment failed enforcement (state 13) — install error on client"
@@ -302,10 +277,9 @@ AND SMS_UpdateComplianceStatus.LastEnforcementMessageID IN (8, 9)
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.Name
 FROM SMS_R_System
-INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+INNER JOIN SMS_CombinedDeviceResources ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
-AND SMS_CH_ClientSummary.ClientActiveStatus = 1
-AND SMS_CH_ClientSummary.LastSWUpdateScanTime > DateAdd(dd,-7,GetDate())
+AND SMS_CombinedDeviceResources.ClientActiveStatus = 1
 AND SMS_R_System.ResourceID NOT IN (
     SELECT SMS_UpdateComplianceStatus.MachineID
     FROM SMS_UpdateComplianceStatus
@@ -393,10 +367,10 @@ AND SMS_CH_EvalResult.Result = 6
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.Name
 FROM SMS_R_System
-INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+INNER JOIN SMS_CombinedDeviceResources ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
 INNER JOIN SMS_G_System_WORKSTATION_STATUS ON SMS_G_System_WORKSTATION_STATUS.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
-AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+AND SMS_CombinedDeviceResources.ClientActiveStatus = 1
 AND SMS_G_System_WORKSTATION_STATUS.LastHardwareScan < DateAdd(dd,-14,GetDate())
 "@
         },
@@ -407,9 +381,9 @@ AND SMS_G_System_WORKSTATION_STATUS.LastHardwareScan < DateAdd(dd,-14,GetDate())
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.Name
 FROM SMS_R_System
-INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+INNER JOIN SMS_CombinedDeviceResources ON SMS_CombinedDeviceResources.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
-AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+AND SMS_CombinedDeviceResources.ClientActiveStatus = 1
 AND SMS_R_System.CreationDate < DateAdd(dd,-2,GetDate())
 AND SMS_R_System.ResourceID NOT IN (
     SELECT SMS_G_System_WORKSTATION_STATUS.ResourceID
