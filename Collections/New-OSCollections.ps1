@@ -87,6 +87,8 @@ foreach ($Folder in $Folders) {
 #   OperatingSystemNameandVersion = "Microsoft Windows NT Workstation 10.0" for Win 10 AND Win 11
 #   OperatingSystemNameandVersion = "Microsoft Windows NT Server 10.0" for Server 2016, 2019, 2022, 2025
 #   The Build field (e.g., "10.0.19045") is required to differentiate versions.
+#   Win11 26H1 (28000) is on a different platform than 26H2 (26300), so its build
+#   number is higher despite being the earlier release. There is no 25H1 release.
 
 $Collections = @(
 
@@ -200,6 +202,24 @@ $Collections = @(
         Folder  = "Operating Systems\Windows 11"
         Comment = "Windows 11 24H2 (Build 26100)"
         WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation 10.0%' AND SMS_R_System.Build LIKE '10.0.26100%'"
+    },
+    @{
+        Name    = "Windows 11 - 25H2"
+        Folder  = "Operating Systems\Windows 11"
+        Comment = "Windows 11 25H2 (Build 26200) — enablement package on the 24H2 platform"
+        WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation 10.0%' AND SMS_R_System.Build LIKE '10.0.26200%'"
+    },
+    @{
+        Name    = "Windows 11 - 26H1"
+        Folder  = "Operating Systems\Windows 11"
+        Comment = "Windows 11 26H1 (Build 28000) — ships only on new Arm silicon (Snapdragon X2); not offered as an in-place update"
+        WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation 10.0%' AND SMS_R_System.Build LIKE '10.0.28000%'"
+    },
+    @{
+        Name    = "Windows 11 - 26H2"
+        Folder  = "Operating Systems\Windows 11"
+        Comment = "Windows 11 26H2 (Build 26300) — enablement package on the 24H2/25H2 platform"
+        WQL     = "SELECT * FROM SMS_R_System WHERE SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation 10.0%' AND SMS_R_System.Build LIKE '10.0.26300%'"
     },
 
     # ── Windows Server ────────────────────────────────────────────────

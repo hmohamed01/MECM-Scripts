@@ -25,9 +25,17 @@
         - Pending Reboot (blocking update installs)
         - Update Compliant (all deployments satisfied)
 
+    Hardware Health:
+        - Low Disk Space on C:
+        - Disk SMART Predicted Failure
+        - WMI Check Failed / Remediated (CcmEval)
+        - Active Client with Stale or Missing Hardware Inventory (WMI suspect)
+        - No Reboot 30+ Days
+        - Workstation RAM Below 8 GB
+
     Collections are placed under Device Collections\Client Health (and
-    the Software Update Health subfolder) and refreshed weekly. Existing
-    collections are skipped (idempotent).
+    the Software Update Health / Hardware Health subfolders) and refreshed
+    weekly. Existing collections are skipped (idempotent).
 
 .NOTES
     Run on a machine with the MECM console installed.
@@ -36,6 +44,10 @@
     Software Update Health collections require Win32_Service enabled in
     hardware inventory (default). Service-state collections reflect the
     state at last hardware inventory, not real-time.
+
+    "HW Health - Disk SMART Predicted Failure" requires the Status property
+    of Disk Drives (Win32_DiskDrive) enabled in Client Settings > Hardware
+    Inventory — it is NOT collected by default.
 
     Date arithmetic uses DateAdd/GetDate WQL functions supported by the
     ConfigMgr collection query engine.
@@ -54,7 +66,8 @@ try {
     # ─── Create Console Folder Structure ──────────────────────────────
     $Folders = @(
         "Client Health",
-        "Client Health\Software Update Health"
+        "Client Health\Software Update Health",
+        "Client Health\Hardware Health"
     )
 
     foreach ($Folder in $Folders) {
@@ -193,13 +206,13 @@ AND SMS_G_System_SERVICE.State != 'Running'
         @{
             Name    = "SU Health - CcmEval Health Check Failed"
             Folder  = "Client Health\Software Update Health"
-            Comment = "CcmEval reported unhealthy and could not auto-remediate (Result 7 = not fixed)"
+            Comment = "CcmEval reported unhealthy and could not auto-remediate (Result 3 = failed, 4 = remediation failed, 5 = dependency failed)"
             WQL     = @"
 SELECT SMS_R_System.ResourceID, SMS_R_System.Name
 FROM SMS_R_System
 INNER JOIN SMS_CH_EvalResult ON SMS_CH_EvalResult.ResourceID = SMS_R_System.ResourceID
 WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
-AND SMS_CH_EvalResult.Result = 7
+AND SMS_CH_EvalResult.Result IN (3, 4, 5)
 "@
         },
         @{
@@ -278,6 +291,137 @@ AND SMS_R_System.ResourceID NOT IN (
     FROM SMS_UpdateComplianceStatus
     WHERE SMS_UpdateComplianceStatus.LastEnforcementMessageID IN (8, 9, 13)
 )
+"@
+        },
+
+        # ── Hardware Health ──────────────────────────────────────────
+        # LOGICAL_DISK.FreeSpace is in MB; X86_PC_MEMORY.TotalPhysicalMemory is in KB.
+        # SMS_CH_EvalResult holds one row per CcmEval check from the client's latest
+        # report. Result: 3 = failed, 4 = remediation failed, 5 = dependency failed,
+        # 6 = remediated, 7 = passed. Clients only resend when the result changes,
+        # so no EvalTime filter — it would drop persistently failing clients.
+
+        @{
+            Name    = "HW Health - C: Drive Under 5 GB Free"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "C: under 5 GB free — default client cache is 5 GB, so update and app content downloads will fail"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_LOGICAL_DISK ON SMS_G_System_LOGICAL_DISK.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_LOGICAL_DISK.DeviceID = 'C:'
+AND SMS_G_System_LOGICAL_DISK.FreeSpace < 5120
+"@
+        },
+
+        @{
+            Name    = "HW Health - C: Drive Under 20 GB Free"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "C: under 20 GB free — full in-place feature upgrades (e.g. Win10 to Win11, 23H2 to 26H2) will fail setup"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_LOGICAL_DISK ON SMS_G_System_LOGICAL_DISK.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_LOGICAL_DISK.DeviceID = 'C:'
+AND SMS_G_System_LOGICAL_DISK.FreeSpace < 20480
+"@
+        },
+        @{
+            Name    = "HW Health - Disk SMART Predicted Failure"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "Physical disk reports SMART 'Pred Fail' — replace the drive before data loss. Requires Disk Drives > Status in HW inventory"
+            WQL     = @"
+SELECT DISTINCT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_DISK ON SMS_G_System_DISK.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_DISK.Status = 'Pred Fail'
+"@
+        },
+        @{
+            Name    = "HW Health - WMI Check Failed"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "CcmEval WMI check (repository integrity, event sink, service, policy platform) failed and was not remediated"
+            WQL     = @"
+SELECT DISTINCT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_EvalResult ON SMS_CH_EvalResult.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_EvalResult.HealthCheckDescription LIKE '%WMI%'
+AND SMS_CH_EvalResult.Result IN (3, 4, 5)
+"@
+        },
+        @{
+            Name    = "HW Health - WMI Remediated by CcmEval"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "CcmEval found a WMI fault and auto-remediated — recurring membership indicates WMI repository instability"
+            WQL     = @"
+SELECT DISTINCT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_EvalResult ON SMS_CH_EvalResult.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_EvalResult.HealthCheckDescription LIKE '%WMI%'
+AND SMS_CH_EvalResult.Result = 6
+"@
+        },
+        @{
+            Name    = "HW Health - Active Client, HW Inventory Stale 14+ Days"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "Client is active (heartbeat/policy) but hardware inventory has not reported in 14+ days — common symptom of WMI corruption"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+INNER JOIN SMS_G_System_WORKSTATION_STATUS ON SMS_G_System_WORKSTATION_STATUS.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+AND SMS_G_System_WORKSTATION_STATUS.LastHardwareScan < DateAdd(dd,-14,GetDate())
+"@
+        },
+        @{
+            Name    = "HW Health - Active Client, Never Inventoried"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "Active client registered 2+ days ago with no hardware inventory on record — WMI or inventory agent likely broken"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_CH_ClientSummary ON SMS_CH_ClientSummary.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_CH_ClientSummary.ClientActiveStatus = 1
+AND SMS_R_System.CreationDate < DateAdd(dd,-2,GetDate())
+AND SMS_R_System.ResourceID NOT IN (
+    SELECT SMS_G_System_WORKSTATION_STATUS.ResourceID
+    FROM SMS_G_System_WORKSTATION_STATUS
+)
+"@
+        },
+        @{
+            Name    = "HW Health - No Reboot 30+ Days"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "LastBootUpTime older than 30 days (inventory fresh within 7 days) — pending installs, leaked memory, degraded WMI providers"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_OPERATING_SYSTEM ON SMS_G_System_OPERATING_SYSTEM.ResourceID = SMS_R_System.ResourceID
+INNER JOIN SMS_G_System_WORKSTATION_STATUS ON SMS_G_System_WORKSTATION_STATUS.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_G_System_OPERATING_SYSTEM.LastBootUpTime < DateAdd(dd,-30,GetDate())
+AND SMS_G_System_WORKSTATION_STATUS.LastHardwareScan > DateAdd(dd,-7,GetDate())
+"@
+        },
+        @{
+            Name    = "HW Health - Workstation RAM Below 8 GB"
+            Folder  = "Client Health\Hardware Health"
+            Comment = "Workstations reporting under 7 GB usable RAM (headroom for firmware/iGPU reservation so 8 GB devices are not flagged)"
+            WQL     = @"
+SELECT SMS_R_System.ResourceID, SMS_R_System.Name
+FROM SMS_R_System
+INNER JOIN SMS_G_System_X86_PC_MEMORY ON SMS_G_System_X86_PC_MEMORY.ResourceID = SMS_R_System.ResourceID
+WHERE SMS_R_System.Client = 1 AND SMS_R_System.Obsolete = 0
+AND SMS_R_System.OperatingSystemNameandVersion LIKE '%Workstation%'
+AND SMS_G_System_X86_PC_MEMORY.TotalPhysicalMemory < 7340032
 "@
         }
     )

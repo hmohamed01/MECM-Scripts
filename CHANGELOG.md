@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-11-09
+
+### Added
+- `Collections/New-OSCollections.ps1` — Windows 11 25H2 (26200), 26H1 (28000), and 26H2 (26300) collections. 26H1 ships only on new Snapdragon X2 devices. There is no 25H1 release
+- `Collections/New-ClientHealthCollections.ps1` — hardware health collections under `Client Health\Hardware Health`: low C: free space, disk SMART predicted failure, CcmEval WMI check failed/remediated, active clients with stale or missing hardware inventory (WMI suspect), no reboot in 30+ days, and workstation RAM below 8 GB
+
+### Fixed
+- `Collections/New-ClientHealthCollections.ps1` — `SU Health - CcmEval Health Check Failed` queried `Result = 7` (Evaluation Succeeded) and so returned healthy clients; now queries `Result IN (3, 4, 5)`. Re-running the script skips existing collections, so update the membership rule on sites where it was already created
+
 ## [1.3.0] - 2026-04-17
 
 ### Added

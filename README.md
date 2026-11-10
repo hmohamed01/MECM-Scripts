@@ -1,6 +1,6 @@
 # mecm-scripts
 
-[![Version](https://img.shields.io/badge/version-1.3.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows)
@@ -20,7 +20,7 @@ PowerShell automation scripts for Microsoft Endpoint Configuration Manager (MECM
 mecm-scripts/
 ├── Collections/                         Collection builders (data-driven hashtables + WQL)
 │   ├── New-OSCollections.ps1            Win 10 / 11 / Server versions
-│   ├── New-ClientHealthCollections.ps1  Client health + software update health triage
+│   ├── New-ClientHealthCollections.ps1  Client, software update, and hardware health triage
 │   ├── New-ServerRoleCollections.ps1    DC, SQL, IIS, DNS, DHCP, Hyper-V, Exchange, WSUS
 │   └── New-Win11ReadinessCollections.ps1  Win11 upgrade readiness (HW checks)
 │
@@ -86,6 +86,14 @@ All scripts follow the same patterns:
 - Server 2016 / 2019 / 2022 / 2025 all share `OperatingSystemNameandVersion LIKE '%Server 10.0%'`, so each server collection likewise includes a `Build` filter to pin the specific release.
 - Server 2012 and 2012 R2 use NT 6.2 and 6.3 respectively, so those collections match on `OperatingSystemNameandVersion` alone with no Build filter needed.
 - Server-role collections (`New-ServerRoleCollections.ps1`) detect roles via `SMS_G_System_SERVICE` joined on service names (NTDS, MSSQL%, W3SVC, etc.) — requires Win32_Service hardware inventory enabled (default).
+
+## Hardware Health Collections
+
+`New-ClientHealthCollections.ps1` builds a `Client Health\Hardware Health` folder. Most of its collections use default hardware inventory (`LOGICAL_DISK`, `OPERATING_SYSTEM`, `X86_PC_MEMORY`, `WORKSTATION_STATUS`) or client status data (`SMS_CH_EvalResult`, `SMS_CH_ClientSummary`). One collection needs an extra setting:
+
+- **Disk SMART Predicted Failure** queries `SMS_G_System_DISK.Status = 'Pred Fail'`. Enable the **Status** property of **Disk Drives (Win32_DiskDrive)** under **Client Settings > Hardware Inventory > Set Classes**. It is not collected by default.
+
+The WMI collections filter `SMS_CH_EvalResult.HealthCheckDescription LIKE '%WMI%'`. That matches CcmEval's WMI repository integrity, WMI event sink, WMI service, and policy platform WMI checks.
 
 ## Hardware Inventory Prerequisites for Win11 Readiness
 
