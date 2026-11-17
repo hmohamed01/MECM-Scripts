@@ -1,6 +1,6 @@
 # mecm-scripts
 
-[![Version](https://img.shields.io/badge/version-1.4.3-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.0-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows)
@@ -22,6 +22,7 @@ mecm-scripts/
 │   ├── New-OSCollections.ps1            Win 10 / 11 / Server versions
 │   ├── New-ClientHealthCollections.ps1  Client, software update, and hardware health triage
 │   ├── New-ServerRoleCollections.ps1    DC, SQL, IIS, DNS, DHCP, Hyper-V, Exchange, WSUS
+│   ├── New-HardwareCollections.ps1      Manufacturers, processor architectures, chassis types
 │   └── New-Win11ReadinessCollections.ps1  Win11 upgrade readiness (HW checks)
 │
 ├── Reporting/                           Read-only audit and export
@@ -47,6 +48,7 @@ Run any script from a PowerShell session on a machine with the MECM console. Eac
 .\Collections\New-OSCollections.ps1
 .\Collections\New-ClientHealthCollections.ps1
 .\Collections\New-ServerRoleCollections.ps1
+.\Collections\New-HardwareCollections.ps1
 .\Collections\New-Win11ReadinessCollections.ps1
 
 .\Reporting\Get-EmptyCollections.ps1 -OutputPath C:\Temp\empty.csv -IncludeUserCollections
@@ -86,6 +88,21 @@ All scripts follow the same patterns:
 - Server 2016 / 2019 / 2022 / 2025 all share `OperatingSystemNameandVersion LIKE '%Server 10.0%'`, so each server collection likewise includes a `Build` filter to pin the specific release.
 - Server 2012 and 2012 R2 use NT 6.2 and 6.3 respectively, so those collections match on `OperatingSystemNameandVersion` alone with no Build filter needed.
 - Server-role collections (`New-ServerRoleCollections.ps1`) detect roles via `SMS_G_System_SERVICE` joined on service names (NTDS, MSSQL%, W3SVC, etc.) — requires Win32_Service hardware inventory enabled (default).
+
+## Hardware Collections
+
+`New-HardwareCollections.ps1` builds three folders under `Hardware`:
+
+| Folder | Collections | Source |
+|---|---|---|
+| `Manufacturers` | `Manufacturer - <vendor>`, including VMware and Hyper-V virtual machines | `SMS_G_System_COMPUTER_SYSTEM.Manufacturer` / `Model` |
+| `Processor Architectures` | `Architecture - x64`, `x86 (32-bit)`, `ARM64` | `SMS_G_System_COMPUTER_SYSTEM.SystemType` |
+| `Chassis Types` | `Chassis - Desktops`, `All-in-One PCs`, `Mini and Stick PCs`, `Laptops`, `Tablets and 2-in-1s`, `Servers` | `SMS_G_System_SYSTEM_ENCLOSURE.ChassisTypes` |
+
+- Chassis collections group SMBIOS chassis type codes into form factors. The code-to-collection mapping is in the `$Collections` array.
+- Chassis collections exclude virtual machines (`SMS_R_System.IsVirtualMachine`), which report a chassis code of their own. Hyper-V guests report Desktop.
+- A docked laptop can report the dock as a second enclosure. Docking codes (12, 18, 21) are grouped with laptops for that reason.
+- `SystemType` is the platform Windows runs on, so 32-bit Windows on a 64-bit processor lands in the x86 collection.
 
 ## Hardware Health Collections
 

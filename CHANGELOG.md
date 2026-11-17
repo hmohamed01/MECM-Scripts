@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-16
+
+### Added
+- `Collections/New-HardwareCollections.ps1` — 21 hardware collections under `Hardware`: 12 in `Manufacturers` (Dell, HP, Lenovo, Microsoft Surface, Acer, ASUS, Fujitsu, Panasonic, Samsung, Dynabook / Toshiba, VMware and Hyper-V virtual machines), 3 in `Processor Architectures` (x64, x86, ARM64), and 6 in `Chassis Types` (desktops, all-in-one PCs, mini and stick PCs, laptops, tablets and 2-in-1s, servers). Chassis collections exclude virtual machines
+
 ## [1.4.3] - 2026-11-10
 
 ### Fixed
