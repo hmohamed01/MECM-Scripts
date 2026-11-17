@@ -100,6 +100,7 @@ AND SMS_R_System.IsVirtualMachine = 'False'
     #   29 Blade Enclosure   30 Tablet               31 Convertible      32 Detachable
     #   35 Mini PC           36 Stick PC
     # 12, 18, and 21 are grouped with laptops: that is what a docked laptop reports.
+    # 31 and 32 (2-in-1s) are grouped with laptops so they share laptop targeting.
 
     $Collections = @(
 
@@ -219,14 +220,14 @@ AND SMS_R_System.IsVirtualMachine = 'False'
         @{
             Name    = "Chassis - Laptops"
             Folder  = "Hardware\Chassis Types"
-            Comment = "Laptops and notebooks, docked or undocked (chassis types 8, 9, 10, 12, 14, 18, 21)"
-            WQL     = New-ChassisTypeQuery -ChassisTypeCodes 8, 9, 10, 12, 14, 18, 21
+            Comment = "Laptops, notebooks, and 2-in-1s (convertibles and detachables), docked or undocked (chassis types 8, 9, 10, 12, 14, 18, 21, 31, 32)"
+            WQL     = New-ChassisTypeQuery -ChassisTypeCodes 8, 9, 10, 12, 14, 18, 21, 31, 32
         },
         @{
-            Name    = "Chassis - Tablets and 2-in-1s"
+            Name    = "Chassis - Tablets"
             Folder  = "Hardware\Chassis Types"
-            Comment = "Hand-helds, tablets, convertibles, and detachables (chassis types 11, 30, 31, 32)"
-            WQL     = New-ChassisTypeQuery -ChassisTypeCodes 11, 30, 31, 32
+            Comment = "Hand-helds and tablets (chassis types 11, 30)"
+            WQL     = New-ChassisTypeQuery -ChassisTypeCodes 11, 30
         },
         @{
             Name    = "Chassis - Servers"

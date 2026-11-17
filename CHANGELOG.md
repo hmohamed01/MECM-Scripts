@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-11-16
+
+### Changed
+- `Collections/New-HardwareCollections.ps1` — convertibles and detachables (chassis types 31, 32) moved from the tablets collection to `Chassis - Laptops`. `Chassis - Tablets and 2-in-1s` is renamed `Chassis - Tablets` and now holds only chassis types 11 and 30. Re-running the script skips existing collections, so on sites where 1.5.0 was already run, update the `Chassis - Laptops` membership rule and delete `Chassis - Tablets and 2-in-1s`
+
 ## [1.5.0] - 2026-11-16
 
 ### Added

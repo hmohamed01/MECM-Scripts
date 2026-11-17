@@ -1,6 +1,6 @@
 # mecm-scripts
 
-[![Version](https://img.shields.io/badge/version-1.5.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.1-brightgreen.svg)](CHANGELOG.md)
 [![Build Status](https://img.shields.io/badge/build-passing-success.svg)]()
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows)
@@ -97,11 +97,12 @@ All scripts follow the same patterns:
 |---|---|---|
 | `Manufacturers` | `Manufacturer - <vendor>`, including VMware and Hyper-V virtual machines | `SMS_G_System_COMPUTER_SYSTEM.Manufacturer` / `Model` |
 | `Processor Architectures` | `Architecture - x64`, `x86 (32-bit)`, `ARM64` | `SMS_G_System_COMPUTER_SYSTEM.SystemType` |
-| `Chassis Types` | `Chassis - Desktops`, `All-in-One PCs`, `Mini and Stick PCs`, `Laptops`, `Tablets and 2-in-1s`, `Servers` | `SMS_G_System_SYSTEM_ENCLOSURE.ChassisTypes` |
+| `Chassis Types` | `Chassis - Desktops`, `All-in-One PCs`, `Mini and Stick PCs`, `Laptops`, `Tablets`, `Servers` | `SMS_G_System_SYSTEM_ENCLOSURE.ChassisTypes` |
 
 - Chassis collections group SMBIOS chassis type codes into form factors. The code-to-collection mapping is in the `$Collections` array.
 - Chassis collections exclude virtual machines (`SMS_R_System.IsVirtualMachine`), which report a chassis code of their own. Hyper-V guests report Desktop.
 - A docked laptop can report the dock as a second enclosure. Docking codes (12, 18, 21) are grouped with laptops for that reason.
+- Convertibles and detachables (31, 32) are grouped with laptops, so 2-in-1s such as Surface Pro and Yoga get laptop targeting. `Chassis - Tablets` holds only hand-helds and tablets (11, 30).
 - `SystemType` is the platform Windows runs on, so 32-bit Windows on a 64-bit processor lands in the x86 collection.
 
 ## Hardware Health Collections
